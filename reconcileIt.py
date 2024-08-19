@@ -146,18 +146,18 @@ def convert_df_to_csv_bytes(df):
 # Streamlit app
 st.title('Bank and Accounting Reconciliation')
 
-uploaded_file_1 = st.file_uploader("Upload the first file", type=["csv", "xlsx", "xls"])
-uploaded_file_2 = st.file_uploader("Upload the second file", type=["csv", "xlsx", "xls"])
+uploaded_file_1 = st.file_uploader("Upload the first file", type=["csv", "xlsx", "xls"], help='Aquí puedes subir el primer archivo para la conciliación.')
+uploaded_file_2 = st.file_uploader("Upload the second file", type=["csv", "xlsx", "xls"], help='Aquí puedes subir el segundo archivo para la conciliación.')
 
 if uploaded_file_1 and uploaded_file_2:
-    header_1 = st.number_input('In which row is the header for the first file:', min_value=1) - 1
-    header_2 = st.number_input('In which row is the header for the second file:', min_value=1) - 1
+    header_1 = st.number_input('In which row is the header for the first file:', min_value=1, help='Selecciona aquí en qué fila está el encabezado del primer archivo.') - 1
+    header_2 = st.number_input('In which row is the header for the second file:', min_value=1, help='Selecciona aquí en qué fila está el encabezado del segundo archivo.') - 1
 
     df1 = read_file(uploaded_file_1, header_row=header_1)
     df2 = read_file(uploaded_file_2, header_row=header_2)
 
-    file_type_1 = st.selectbox("Select the type for the first file:", ['Accounting', 'Bank'])
-    file_type_2 = st.selectbox("Select the type for the second file:", ['Accounting', 'Bank'])
+    file_type_1 = st.selectbox("Select the type for the first file:", ['Accounting', 'Bank'], help='El primer archivo es de: ¿Contabilidad o banco?')
+    file_type_2 = st.selectbox("Select the type for the second file:", ['Accounting', 'Bank'], help='El segundo archivo es de: ¿Contabilidad o banco?')
 
     try:
         if file_type_1 == 'Bank':
