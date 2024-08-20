@@ -19,7 +19,7 @@ def read_file(file, header_row=0):
         delimiter = detect_csv_delimiter(file)
         return pd.read_csv(file, header=header_row, delimiter=delimiter)
     else:
-        raise ValueError(f"Unsupported file format: {file.name}")
+        st.warning(f'El archivo {file.name} no es válido.')
 
 def detect_csv_delimiter(file, num_chars=1024):
     sniffer = csv.Sniffer()
@@ -28,10 +28,10 @@ def detect_csv_delimiter(file, num_chars=1024):
     try:
         delimiter = sniffer.sniff(sample).delimiter
         if delimiter not in [',', ';', '\t', '|']:
-            raise ValueError("Unrecognized delimiter. Please specify the delimiter.")
+            st.warning(f'El archivo {file.name} no es válido.')
         return delimiter
     except csv.Error:
-        raise ValueError("Could not automatically determine the delimiter. Please specify the delimiter.")
+        st.warning(f'Porfavor sube un archivo válido.')
 
 def prompt_columns(df, file_type, prefix=''):
     st.write(f"\nTipo de archivo: {file_type}")
@@ -84,23 +84,37 @@ def crossing(df1, df2, col1='concat', col2='concat'):
         logging.error(f"Error during initial reconciliation: {e}")
         raise
 
-def find_matches_efficiently(tf1, tf2, og_df1, og_df2, not_conc_1, not_conc_2, conc_1, conc_2, col1='Amount_Accounting', col2='Amount_Bank', max_comb_size=3):
+import streamlit as st
+from itertools import combinations
+
+import pandas as pd
+import streamlit as st
+from itertools import combinations
+
+def find_matches_efficiently(tf1, tf2, og_df1, og_df2, not_conc_1, not_conc_2, conc_1, conc_2, col1='Amount_Accounting', col2='Amount_Bank', max_comb_size=2):
     
-    if tf1=='Banco':
-        col1='Amount_Bank'
+    if tf1 == 'Banco':
+        col1 = 'Amount_Bank'
     else:
-        col1='Amount_Accounting'
+        col1 = 'Amount_Accounting'
     
-    if tf2=='Banco':
-        col2='Amount_Bank'
+    if tf2 == 'Banco':
+        col2 = 'Amount_Bank'
     else:
-        col2='Amount_Accounting'
+        col2 = 'Amount_Accounting'
 
     matched_df1_indices = conc_1
     matched_df2_indices = conc_2
 
     not_conc_2_sorted = not_conc_2.sort_values(by=col2, key=abs)
-
+    
+    # Initialize progress bar
+    progress_bar = st.progress(0)
+    
+    i = 0
+    total_steps = len(not_conc_1) 
+    
+    # Exact match
     for idx_1, row_1 in not_conc_1.iterrows():
         amount_1 = row_1[col1]
         exact_match = not_conc_2_sorted[not_conc_2_sorted[col2] == amount_1]
@@ -110,24 +124,21 @@ def find_matches_efficiently(tf1, tf2, og_df1, og_df2, not_conc_1, not_conc_2, c
             matched_df1_indices.append(idx_1)
             matched_df2_indices.append(idx_2)
             not_conc_2_sorted = not_conc_2_sorted.drop(idx_2)
-            continue
+        else:
+            for r in range(2, max_comb_size + 1):
+                for comb in combinations(not_conc_2_sorted.iterrows(), r):
+                    comb_indices = tuple(idx for idx, _ in comb)
+                    comb_sum = sum(row[col2] for _, row in comb)
 
-    for r in range(2, max_comb_size + 1):
-        for idx_1, row_1 in not_conc_1.iterrows():
-            amount_1 = row_1[col1]
-            if idx_1 in matched_df1_indices:
-                continue
+                    if comb_sum == amount_1:
+                        matched_df1_indices.append(idx_1)
+                        matched_df2_indices.extend(comb_indices)
+                        not_conc_2_sorted = not_conc_2_sorted.drop(list(comb_indices))
+                        break
 
-            for comb in combinations(not_conc_2_sorted.iterrows(), r):
-                comb_indices = tuple(idx for idx, _ in comb)
-                comb_sum = sum(row[col2] for _, row in comb)
-
-                if comb_sum == amount_1:
-                    matched_df1_indices.append(idx_1)
-                    matched_df2_indices.extend(comb_indices)
-                    not_conc_2_sorted = not_conc_2_sorted.drop(list(comb_indices))
-                    break
-
+        i += 1
+        progress_bar.progress(i / total_steps)
+    
     matched_df1 = og_df1.loc[matched_df1_indices]
     unmatched_df1 = og_df1.drop(matched_df1_indices)
 
@@ -141,7 +152,12 @@ def convert_df_to_csv_bytes(df):
     df.to_csv(csv_buffer, index=False)
     return csv_buffer.getvalue().encode('utf-8')
 
-# Streamlit app
+
+
+
+
+######################################### Streamlit app ###############################################
+
 st.title('Conciliación bancaria y contable')
 
 st.sidebar.title('Panel de control')
@@ -183,8 +199,8 @@ if uploaded_file_1 and uploaded_file_2:
             else:
                 processed_2 = process_ledger(df2, date_col_2, debit_col_2, credit_col_2)
 
-                not_conc_1, not_conc_2, conc_1, conc_2 = crossing(processed_1, processed_2)
-
+            not_conc_1, not_conc_2, conc_1, conc_2 = crossing(processed_1, processed_2)
+            
             matched_df1, matched_df2, unmatched_df1, unmatched_df2 = find_matches_efficiently(
                 file_type_1, file_type_2, df1, df2, not_conc_1, not_conc_2, conc_1, conc_2, 
                 col1='Amount_Accounting' if file_type_1 == 'Libros' else 'Amount_Bank',
