@@ -173,74 +173,99 @@ if uploaded_file_1 and uploaded_file_2:
     file_type_1 = st.sidebar.selectbox("Qué tipo de archivo es el primero:", ['Libros', 'Banco'])
     file_type_2 = st.sidebar.selectbox("Qué tipo de archivo es el segundo:", ['Libros', 'Banco'])
 
-    try:
-        if file_type_1 == 'Banco':
-            date_col_1, amount_col_1 = prompt_columns(df1, 'Banco', prefix='1')
-            processed_1 = process_bank(df1, date_col_1, amount_col_1)
-        else:
-            date_col_1, debit_col_1, credit_col_1 = prompt_columns(df1, 'Libros', prefix='1')
-            processed_1 = process_ledger(df1, date_col_1, debit_col_1, credit_col_1)
+    # try:
+    #     if file_type_1 == 'Banco':
+    #         date_col_1, amount_col_1 = prompt_columns(df1, 'Banco', prefix='1')
+    #         processed_1 = process_bank(df1, date_col_1, amount_col_1)
+    #     else:
+    #         date_col_1, debit_col_1, credit_col_1 = prompt_columns(df1, 'Libros', prefix='1')
+    #         processed_1 = process_ledger(df1, date_col_1, debit_col_1, credit_col_1)
 
-        if file_type_2 == 'Banco':
-            date_col_2, amount_col_2 = prompt_columns(df2, 'Banco', prefix='2')
-            processed_2 = process_bank(df2, date_col_2, amount_col_2)
-        else:
-            date_col_2, debit_col_2, credit_col_2 = prompt_columns(df2, 'Libros', prefix='2')
-            processed_2 = process_ledger(df2, date_col_2, debit_col_2, credit_col_2)
+    #     if file_type_2 == 'Banco':
+    #         date_col_2, amount_col_2 = prompt_columns(df2, 'Banco', prefix='2')
+    #         processed_2 = process_bank(df2, date_col_2, amount_col_2)
+    #     else:
+    #         date_col_2, debit_col_2, credit_col_2 = prompt_columns(df2, 'Libros', prefix='2')
+    #         processed_2 = process_ledger(df2, date_col_2, debit_col_2, credit_col_2)
 
-        not_conc_1, not_conc_2, conc_1, conc_2 = crossing(processed_1, processed_2)
+    st.write("Configure file 1")
+    if file_type_1 == 'Banco':
+        date_col_1, amount_col_1 = prompt_columns(df1, 'Banco', prefix='1')
+    else:
+        date_col_1, debit_col_1, credit_col_1 = prompt_columns(df1, 'Libros', prefix='1')
 
-        matched_df1, matched_df2, unmatched_df1, unmatched_df2 = find_matches_efficiently(
-            file_type_1, file_type_2, df1, df2, not_conc_1, not_conc_2, conc_1, conc_2, 
-            col1='Amount_Accounting' if file_type_1 == 'Libros' else 'Amount_Bank',
-            col2='Amount_Accounting' if file_type_2 == 'Libros' else 'Amount_Bank'
-        )
+    st.write("Configure file 2")
+    if file_type_2 == 'Banco':
+        date_col_2, amount_col_2 = prompt_columns(df2, 'Banco', prefix='2')
+    else:
+        date_col_2, debit_col_2, credit_col_2 = prompt_columns(df2, 'Libros', prefix='2')
 
-        st.write(f"Initial Reconciliation: {len(conc_1)} transactions reconciled.")
+    # Step 3: Define a conciliation button and the logic when it's pressed
+    if st.button('Conciliar'):
+        try:
+            if file_type_1 == 'Banco':
+                processed_1 = process_bank(df1, date_col_1, amount_col_1)
+            else:
+                processed_1 = process_ledger(df1, date_col_1, debit_col_1, credit_col_1)
 
-        st.write("Reconciled transactions from the first file:")
-        st.dataframe(matched_df1)
+            if file_type_2 == 'Banco':
+                processed_2 = process_bank(df2, date_col_2, amount_col_2)
+            else:
+                processed_2 = process_ledger(df2, date_col_2, debit_col_2, credit_col_2)
 
-        st.write("Reconciled transactions from the second file:")
-        st.dataframe(matched_df2)
+                not_conc_1, not_conc_2, conc_1, conc_2 = crossing(processed_1, processed_2)
 
-        st.write("Unreconciled transactions from the first file:")
-        st.dataframe(unmatched_df1)
+            matched_df1, matched_df2, unmatched_df1, unmatched_df2 = find_matches_efficiently(
+                file_type_1, file_type_2, df1, df2, not_conc_1, not_conc_2, conc_1, conc_2, 
+                col1='Amount_Accounting' if file_type_1 == 'Libros' else 'Amount_Bank',
+                col2='Amount_Accounting' if file_type_2 == 'Libros' else 'Amount_Bank'
+            )
 
-        st.write("Unreconciled transactions from the second file:")
-        st.dataframe(unmatched_df2)
+            st.write(f"Initial Reconciliation: {len(conc_1)} transactions reconciled.")
 
-        st.write("Download results:")
+            st.write("Reconciled transactions from the first file:")
+            st.dataframe(matched_df1)
 
-        st.download_button(
-            label="Download Reconciled Transactions - First File",
-            data=convert_df_to_csv_bytes(matched_df1),
-            file_name='reconciled_file_1.csv',
-            mime='text/csv',
-        )
+            st.write("Reconciled transactions from the second file:")
+            st.dataframe(matched_df2)
 
-        st.download_button(
-            label="Download Reconciled Transactions - Second File",
-            data=convert_df_to_csv_bytes(matched_df2),
-            file_name='reconciled_file_2.csv',
-            mime='text/csv',
-        )
+            st.write("Unreconciled transactions from the first file:")
+            st.dataframe(unmatched_df1)
 
-        st.download_button(
-            label="Download Unreconciled Transactions - First File",
-            data=convert_df_to_csv_bytes(unmatched_df1),
-            file_name='unreconciled_file_1.csv',
-            mime='text/csv',
-        )
+            st.write("Unreconciled transactions from the second file:")
+            st.dataframe(unmatched_df2)
 
-        st.download_button(
-            label="Download Unreconciled Transactions - Second File",
-            data=convert_df_to_csv_bytes(unmatched_df2),
-            file_name='unreconciled_file_2.csv',
-            mime='text/csv',
-        )
-    except KeyError:
-        st.write('Please indicate the correct amount column.')
+            st.write("Download results:")
+
+            st.download_button(
+                label="Download Reconciled Transactions - First File",
+                data=convert_df_to_csv_bytes(matched_df1),
+                file_name='reconciled_file_1.csv',
+                mime='text/csv',
+            )
+
+            st.download_button(
+                label="Download Reconciled Transactions - Second File",
+                data=convert_df_to_csv_bytes(matched_df2),
+                file_name='reconciled_file_2.csv',
+                mime='text/csv',
+            )
+
+            st.download_button(
+                label="Download Unreconciled Transactions - First File",
+                data=convert_df_to_csv_bytes(unmatched_df1),
+                file_name='unreconciled_file_1.csv',
+                mime='text/csv',
+            )
+
+            st.download_button(
+                label="Download Unreconciled Transactions - Second File",
+                data=convert_df_to_csv_bytes(unmatched_df2),
+                file_name='unreconciled_file_2.csv',
+                mime='text/csv',
+            )
+        except KeyError:
+            st.write('Please indicate the correct amount column.')
 
 
 
