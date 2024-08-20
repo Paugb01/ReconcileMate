@@ -65,9 +65,17 @@ def convert_to_float(value):
         logging.error(f"Unexpected data type for conversion: {type(value)}")
         return np.nan
 
+# def process_bank(df, date_col, amount_col):
+#     df[date_col] = pd.to_datetime(df[date_col], format="%d/%m/%Y", errors='coerce')
+#     df[amount_col] = df[amount_col].apply(convert_to_float)
+#     df.rename(columns={amount_col: 'Amount_Bank', date_col: 'Transaction_Date'}, inplace=True)
+#     df['concat'] = df['Transaction_Date'].astype(str) + ' ' + df['Amount_Bank'].astype(str)
+#     logging.info(f"Bank: {len(df)} records processed.")
+#     return df
+
 def process_bank(df, date_col, amount_col):
     df[date_col] = pd.to_datetime(df[date_col], format="%d/%m/%Y", errors='coerce')
-    df[amount_col] = df[amount_col].apply(convert_to_float)
+    df[amount_col] = pd.to_numeric(df[amount_col].astype(str).str.replace(',', '.'), errors='coerce')
     df.rename(columns={amount_col: 'Amount_Bank', date_col: 'Transaction_Date'}, inplace=True)
     df['concat'] = df['Transaction_Date'].astype(str) + ' ' + df['Amount_Bank'].astype(str)
     logging.info(f"Bank: {len(df)} records processed.")
