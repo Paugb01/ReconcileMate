@@ -35,17 +35,45 @@ def detect_csv_delimiter(file, num_chars=1024):
 
 def prompt_columns(df, file_type, prefix=''):
     st.write(f"\nTipo de archivo: {file_type}")
-    st.write("Columnas disponibles:", list(df.columns))
-    
-    date_col = st.selectbox(f"Columna para fecha {prefix}:", df.columns)
+
+    columns = [col for col in df.columns if isinstance(col, str) and not col.startswith('Unnamed')]
+
+    # Custom CSS for badges
+    st.markdown(
+        """
+        <style>
+        .badge {
+            display: inline-block;
+            padding: 0.4em 0.7em;
+            margin: 0.2em;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            background-color: #4CAF50;
+            border-radius: 5px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    st.write("Columnas disponibles:")
+    if len(columns)==0:
+        st.write('No se encuentra ninguna columna.')
+    else:
+        cols = st.columns(len(columns))  # Create one column per dataframe column
+
+    # Render each column name as a badge inside its own column
+    for i, col_name in enumerate(columns):
+        cols[i].markdown(f"<span class='badge'>{col_name}</span>", unsafe_allow_html=True)
+
+    date_col = st.selectbox(f"Columna para fecha {prefix}:", columns)
     
     if file_type in ['Libros', 'Banco']:
         if file_type == 'Libros':
-            debit_col = st.selectbox(f"Columna para debe {prefix}:", df.columns)
-            credit_col = st.selectbox(f"Columna para haber {prefix}:", df.columns)
+            debit_col = st.selectbox(f"Columna para debe {prefix}:", columns)
+            credit_col = st.selectbox(f"Columna para haber {prefix}:", columns)
             return date_col, debit_col, credit_col
         elif file_type == 'Banco':
-            amount_col = st.selectbox(f"Columna para importe {prefix}:", df.columns)
+            amount_col = st.selectbox(f"Columna para importe {prefix}:", columns)
             return date_col, amount_col
     else:
         raise ValueError("Unsupported file type")
